@@ -23,7 +23,9 @@ func (am *AtomicState) Do() error {
 	defer atomic.StoreUint32(&am.state, 0)
 
 	// prepare the channel
-	am.done = make(chan struct{})
+	if am.done == nil {
+		am.done = make(chan struct{})
+	}
 	defer close(am.done)
 
 	am.fn()
@@ -40,7 +42,9 @@ func (am *AtomicState) DoAsync() error {
 		defer close(am.done)
 
 		// prepare channel
-		am.done = make(chan struct{})
+		if am.done == nil {
+			am.done = make(chan struct{})
+		}
 		am.fn()
 	}()
 
