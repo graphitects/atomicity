@@ -60,3 +60,45 @@ func TestAtomicState_Do(t *testing.T) {
 		}
 	})
 }
+
+func TestAtomicState_DoAsync(t *testing.T) {
+	t.Run("success to run operation, in concurrent ambience and signaling", func(t *testing.T) {
+		am := &AtomicState{
+			fn: func() {
+				time.Sleep(time.Second)
+			},
+			state: 0,
+			done:  nil,
+		}
+
+		err := am.DoAsync()
+		if err != nil {
+			t.Errorf("expected no error, got %s", err.Error())
+			return
+		}
+
+		for i := 0; i < 2; i++ {
+			err := am.DoAsync()
+
+			if err == nil {
+				t.Error("expected error, got nil")
+				return
+			}
+			if err != ErrStateDoUnavailable {
+				t.Errorf("expected error %s, got %s", ErrStateDoUnavailable.Error(), err.Error())
+				return
+			}
+		}
+
+		// wait at least 250 ms until the go routine beggins
+		// - otherwise the am.done is considered nil and will only read when time.After is done, even the close in the go routine after was initialized and then closed properly.
+		time.Sleep(time.Millisecond * 250)
+		select {
+		case <-time.After(time.Second):
+			t.Error("expected channel done to be closed, but did not")
+			return
+		case <-am.done:
+			// success
+		}
+	})
+}
