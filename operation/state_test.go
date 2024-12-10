@@ -12,7 +12,7 @@ func TestAtomicState_Do(t *testing.T) {
 				time.Sleep(time.Second)
 			},
 			state: 0,
-			done:  make(chan struct{}),
+			done:  nil,
 		}
 
 		done := make(chan error, 1)
@@ -49,6 +49,14 @@ func TestAtomicState_Do(t *testing.T) {
 				t.Errorf("expected no error, got %s", err.Error())
 				return
 			}
+		}
+
+		select {
+		case <-time.After(time.Millisecond * 250):
+			t.Error("expected channel done to be closed, but did not")
+			return
+		case <-am.done:
+			// success
 		}
 	})
 }
