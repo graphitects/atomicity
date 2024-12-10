@@ -1,0 +1,16 @@
+mode: count
+github.com/graphitects/atomicity/operation/mutex.go:25.29,33.2 5 20
+github.com/graphitects/atomicity/operation/mutex.go:42.56,43.20 1 20
+github.com/graphitects/atomicity/operation/mutex.go:43.20,45.3 1 5
+github.com/graphitects/atomicity/operation/mutex.go:47.2,47.21 1 15
+github.com/graphitects/atomicity/operation/state.go:26.35,27.51 1 20
+github.com/graphitects/atomicity/operation/state.go:27.51,29.3 1 10
+github.com/graphitects/atomicity/operation/state.go:30.2,36.12 5 10
+github.com/graphitects/atomicity/operation/state.go:42.40,43.51 1 20
+github.com/graphitects/atomicity/operation/state.go:43.51,45.3 1 10
+github.com/graphitects/atomicity/operation/state.go:47.2,47.12 1 10
+github.com/graphitects/atomicity/operation/state.go:47.12,54.3 4 10
+github.com/graphitects/atomicity/operation/state.go:56.2,56.12 1 10
+github.com/graphitects/atomicity/operation/state.go:66.56,67.20 1 30
+github.com/graphitects/atomicity/operation/state.go:67.20,69.3 1 5
+github.com/graphitects/atomicity/operation/state.go:71.2,71.21 1 25

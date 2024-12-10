@@ -14,6 +14,11 @@ var (
 // AtomicState is a concurrency-safe structure that ensures an operation can only run one at a time.
 // It provides synchronous and asynchronous execution methods and a signaling mechanism
 // to notify when the operation is complete.
+//
+// Note:
+//   - The `done` channel is reinitialized with each invocation of `Do` or `DoAsync`.
+//   - In asynchronous operations (`DoAsync`), consumers should ensure that the `done` channel
+//     is accessed only after the goroutine has started to avoid race conditions.
 type AtomicState struct {
 	fn    func()        // The function to be executed safely.
 	state uint32        // Atomic state used to control access to the operation.
@@ -22,7 +27,12 @@ type AtomicState struct {
 
 // Do executes the function synchronously, ensuring that only one operation
 // can run at a time. It uses atomic state control to determine availability,
-// initializes the `done` channel, and signals completion by closing the channel.
+// reinitializes the `done` channel with each invocation, and signals completion
+// by closing the channel.
+//
+// Returns:
+// - `nil` if the operation is successfully executed.
+// - An error if another operation is already in progress.
 func (am *AtomicState) Do() error {
 	if !atomic.CompareAndSwapUint32(&am.state, 0, 1) {
 		return ErrStateDoUnavailable // Return an error if the operation is already in progress.
@@ -38,7 +48,16 @@ func (am *AtomicState) Do() error {
 
 // DoAsync executes the function asynchronously, ensuring that only one operation
 // can run at a time. It uses atomic state control to determine availability,
-// initializes the `done` channel, and signals completion by closing the channel.
+// reinitializes the `done` channel with each invocation, and signals completion
+// by closing the channel.
+//
+// Note:
+//   - The `done` channel is created within the goroutine. Consumers should
+//     avoid accessing it until the goroutine has started to prevent race conditions.
+//
+// Returns:
+// - `nil` if the operation is successfully scheduled.
+// - An error if another operation is already in progress.
 func (am *AtomicState) DoAsync() error {
 	if !atomic.CompareAndSwapUint32(&am.state, 0, 1) {
 		return ErrStateDoUnavailable // Return an error if the operation is already in progress.
@@ -59,6 +78,10 @@ func (am *AtomicState) DoAsync() error {
 // Done provides access to the `done` channel, which signals when the operation
 // has completed. It leverages Go's native behavior of broadcasting to all listeners
 // when a channel is closed. If the `done` channel is uninitialized, an error is returned.
+//
+// Note:
+//   - For operations executed with `DoAsync`, ensure that the `done` channel is accessed
+//     only after the asynchronous operation has started to avoid receiving an uninitialized channel.
 //
 // Returns:
 // - The `done` channel (read-only) for signaling operation completion.
