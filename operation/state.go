@@ -29,10 +29,7 @@ func (am *AtomicState) Do() error {
 	}
 	defer atomic.StoreUint32(&am.state, 0) // Reset the state to allow future executions.
 
-	// Initialize the `done` channel if it is nil.
-	if am.done == nil {
-		am.done = make(chan struct{})
-	}
+	am.done = make(chan struct{})
 	defer close(am.done) // Close the channel to broadcast completion to listeners.
 
 	am.fn() // Execute the function.
@@ -49,12 +46,10 @@ func (am *AtomicState) DoAsync() error {
 
 	go func() {
 		defer atomic.StoreUint32(&am.state, 0) // Reset the state to allow future executions.
-		defer close(am.done)                   // Close the channel to broadcast completion to listeners.
 
-		// Initialize the `done` channel if it is nil.
-		if am.done == nil {
-			am.done = make(chan struct{})
-		}
+		am.done = make(chan struct{})
+		defer close(am.done)
+
 		am.fn() // Execute the function asynchronously.
 	}()
 
