@@ -20,21 +20,21 @@ type AtomicMutex struct {
 }
 
 // Do locks the mutex to ensure that the function is executed safely.
-// It initializes the `done` channel, executes the function, and then
-// signals completion by closing the `done` channel.
+// It reinitializes the `done` channel with each invocation, executes
+// the function, and signals completion by closing the `done` channel.
 func (am *AtomicMutex) Do() {
 	am.mu.Lock()         // Lock the mutex to ensure exclusive access.
 	defer am.mu.Unlock() // Unlock the mutex after the operation completes.
 
-	am.done = make(chan struct{})
-	defer close(am.done) // Close the channel to broadcast completion to listeners.
+	am.done = make(chan struct{}) // Reinitialize the `done` channel for a new operation.
+	defer close(am.done)          // Close the channel to broadcast completion to listeners.
 
 	am.fn() // Execute the function.
 }
 
 // Done provides access to the `done` channel, which signals when the operation
-// has completed. It leverages Go's native behavior of broadcasting to all listeners
-// when a channel is closed. If the `done` channel is uninitialized, an error is returned.
+// has completed. If `Do` has not been called or the `done` channel is uninitialized,
+// an error is returned.
 //
 // Returns:
 // - The `done` channel (read-only) for signaling operation completion.
