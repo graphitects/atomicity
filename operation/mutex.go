@@ -26,10 +26,7 @@ func (am *AtomicMutex) Do() {
 	am.mu.Lock()         // Lock the mutex to ensure exclusive access.
 	defer am.mu.Unlock() // Unlock the mutex after the operation completes.
 
-	// Initialize the `done` channel to signal the completion of the operation.
-	if am.done == nil {
-		am.done = make(chan struct{})
-	}
+	am.done = make(chan struct{})
 	defer close(am.done) // Close the channel to broadcast completion to listeners.
 
 	am.fn() // Execute the function.
