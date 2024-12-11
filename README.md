@@ -113,8 +113,11 @@ func main() {
         fmt.Println("Operation completed")
     }
 
-    // Create an instance of AtomicState.
-    am := &operation.AtomicState{fn: myFunc}
+    // Create an instance of AtomicState using the `NewAtomicState` constructor.
+    am, err := operation.NewAtomicState(myFunc)
+    if err != nil {
+        log.Fatal(err)
+    }
 
     // Run the operation synchronously.
     if err := am.Do(); err != nil {
