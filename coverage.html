@@ -89,6 +89,7 @@ import (
 
 // Predefined error messages for common failure scenarios.
 var (
+        ErrMutexNewFunctionNil = errors.New("function can not be nil") // Error returned when the function is nil
         ErrMutexChannelUnready = errors.New("channel is not prepared") // Error returned when the done channel is uninitialized.
 )
 
@@ -101,32 +102,54 @@ type AtomicMutex struct {
         done chan struct{} // Channel used to signal when the operation is complete.
 }
 
+// NewAtomicMutex creates a new instance of the `AtomicMutex` struct, which
+// ensures that the function is executed atomically and provides a signaling
+// mechanism to indicate when the operation is complete.
+//
+// Parameters:
+// - fn: The function to be executed atomically.
+//
+// Returns:
+// - A new instance of the `AtomicMutex` struct.
+// - An error if the function is nil.
+func NewAtomicMutex(fn func()) (*AtomicMutex, error) <span class="cov7" title="4">{
+        if fn == nil </span><span class="cov4" title="2">{
+                return nil, ErrMutexNewFunctionNil
+        }</span>
+
+        <span class="cov4" title="2">return &amp;AtomicMutex{
+                fn:   fn,
+                mu:   sync.Mutex{},
+                done: nil,
+        }, nil</span>
+}
+
 // Do locks the mutex to ensure that the function is executed safely.
-// It initializes the `done` channel, executes the function, and then
-// signals completion by closing the `done` channel.
-func (am *AtomicMutex) Do() <span class="cov10" title="20">{
+// It reinitializes the `done` channel with each invocation, executes
+// the function, and signals completion by closing the `done` channel.
+func (am *AtomicMutex) Do() <span class="cov10" title="8">{
         am.mu.Lock()         // Lock the mutex to ensure exclusive access.
         defer am.mu.Unlock() // Unlock the mutex after the operation completes.
 
-        am.done = make(chan struct{})
-        defer close(am.done) // Close the channel to broadcast completion to listeners.
+        am.done = make(chan struct{}) // Reinitialize the `done` channel for a new operation.
+        defer close(am.done)          // Close the channel to broadcast completion to listeners.
 
         am.fn() // Execute the function.
 }</span>
 
 // Done provides access to the `done` channel, which signals when the operation
-// has completed. It leverages Go's native behavior of broadcasting to all listeners
-// when a channel is closed. If the `done` channel is uninitialized, an error is returned.
+// has completed. If `Do` has not been called or the `done` channel is uninitialized,
+// an error is returned.
 //
 // Returns:
 // - The `done` channel (read-only) for signaling operation completion.
 // - An error if the `done` channel has not been prepared.
-func (am *AtomicMutex) Done() (&lt;-chan struct{}, error) <span class="cov10" title="20">{
-        if am.done == nil </span><span class="cov5" title="5">{
+func (am *AtomicMutex) Done() (&lt;-chan struct{}, error) <span class="cov10" title="8">{
+        if am.done == nil </span><span class="cov4" title="2">{
                 return nil, ErrMutexChannelUnready // Return an error if the channel is not initialized.
         }</span>
 
-        <span class="cov9" title="15">return am.done, nil</span> // Return the `done` channel for consumers to listen for completion.
+        <span class="cov8" title="6">return am.done, nil</span> // Return the `done` channel for consumers to listen for completion.
 }
 </pre>
 		
@@ -139,6 +162,7 @@ import (
 
 // Predefined error messages for common failure scenarios.
 var (
+        ErrStateNewFunctionNil = errors.New("function can not be nil")    // Error returned when the function is nil
         ErrStateDoUnavailable  = errors.New("operation is not available") // Error returned when the operation is already in progress.
         ErrStateChannelUnready = errors.New("channel is not prepared")    // Error returned when the done channel is uninitialized.
 )
@@ -146,20 +170,52 @@ var (
 // AtomicState is a concurrency-safe structure that ensures an operation can only run one at a time.
 // It provides synchronous and asynchronous execution methods and a signaling mechanism
 // to notify when the operation is complete.
+//
+// Note:
+//   - The `done` channel is reinitialized with each invocation of `Do` or `DoAsync`.
+//   - In asynchronous operations (`DoAsync`), consumers should ensure that the `done` channel
+//     is accessed only after the goroutine has started to avoid race conditions.
 type AtomicState struct {
         fn    func()        // The function to be executed safely.
         state uint32        // Atomic state used to control access to the operation.
         done  chan struct{} // Channel used to signal when the operation is complete.
 }
 
+// NewAtomicState creates a new instance of the `AtomicState` struct, which
+// ensures that the function is executed atomically and provides a signaling
+// mechanism to indicate when the operation is complete.
+//
+// Parameters:
+// - fn: The function to be executed atomically.
+//
+// Returns:
+// - A new instance of the `AtomicState` struct.
+// - An error if the function is nil.
+func NewAtomicState(fn func()) (*AtomicState, error) <span class="cov6" title="4">{
+        if fn == nil </span><span class="cov3" title="2">{
+                return nil, ErrStateNewFunctionNil
+        }</span>
+
+        <span class="cov3" title="2">return &amp;AtomicState{
+                fn:    fn,
+                state: 0,
+                done:  nil,
+        }, nil</span>
+}
+
 // Do executes the function synchronously, ensuring that only one operation
 // can run at a time. It uses atomic state control to determine availability,
-// initializes the `done` channel, and signals completion by closing the channel.
-func (am *AtomicState) Do() error <span class="cov8" title="20">{
-        if !atomic.CompareAndSwapUint32(&amp;am.state, 0, 1) </span><span class="cov7" title="10">{
+// reinitializes the `done` channel with each invocation, and signals completion
+// by closing the channel.
+//
+// Returns:
+// - `nil` if the operation is successfully executed.
+// - An error if another operation is already in progress.
+func (am *AtomicState) Do() error <span class="cov8" title="8">{
+        if !atomic.CompareAndSwapUint32(&amp;am.state, 0, 1) </span><span class="cov6" title="4">{
                 return ErrStateDoUnavailable // Return an error if the operation is already in progress.
         }</span>
-        <span class="cov7" title="10">defer atomic.StoreUint32(&amp;am.state, 0) // Reset the state to allow future executions.
+        <span class="cov6" title="4">defer atomic.StoreUint32(&amp;am.state, 0) // Reset the state to allow future executions.
 
         am.done = make(chan struct{})
         defer close(am.done) // Close the channel to broadcast completion to listeners.
@@ -170,13 +226,22 @@ func (am *AtomicState) Do() error <span class="cov8" title="20">{
 
 // DoAsync executes the function asynchronously, ensuring that only one operation
 // can run at a time. It uses atomic state control to determine availability,
-// initializes the `done` channel, and signals completion by closing the channel.
-func (am *AtomicState) DoAsync() error <span class="cov8" title="20">{
-        if !atomic.CompareAndSwapUint32(&amp;am.state, 0, 1) </span><span class="cov7" title="10">{
+// reinitializes the `done` channel with each invocation, and signals completion
+// by closing the channel.
+//
+// Note:
+//   - The `done` channel is created within the goroutine. Consumers should
+//     avoid accessing it until the goroutine has started to prevent race conditions.
+//
+// Returns:
+// - `nil` if the operation is successfully scheduled.
+// - An error if another operation is already in progress.
+func (am *AtomicState) DoAsync() error <span class="cov8" title="8">{
+        if !atomic.CompareAndSwapUint32(&amp;am.state, 0, 1) </span><span class="cov6" title="4">{
                 return ErrStateDoUnavailable // Return an error if the operation is already in progress.
         }</span>
 
-        <span class="cov7" title="10">go func() </span><span class="cov7" title="10">{
+        <span class="cov6" title="4">go func() </span><span class="cov6" title="4">{
                 defer atomic.StoreUint32(&amp;am.state, 0) // Reset the state to allow future executions.
 
                 am.done = make(chan struct{})
@@ -185,22 +250,26 @@ func (am *AtomicState) DoAsync() error <span class="cov8" title="20">{
                 am.fn() // Execute the function asynchronously.
         }</span>()
 
-        <span class="cov7" title="10">return nil</span>
+        <span class="cov6" title="4">return nil</span>
 }
 
 // Done provides access to the `done` channel, which signals when the operation
 // has completed. It leverages Go's native behavior of broadcasting to all listeners
 // when a channel is closed. If the `done` channel is uninitialized, an error is returned.
 //
+// Note:
+//   - For operations executed with `DoAsync`, ensure that the `done` channel is accessed
+//     only after the asynchronous operation has started to avoid receiving an uninitialized channel.
+//
 // Returns:
 // - The `done` channel (read-only) for signaling operation completion.
 // - An error if the `done` channel has not been prepared.
-func (am *AtomicState) Done() (&lt;-chan struct{}, error) <span class="cov10" title="30">{
-        if am.done == nil </span><span class="cov5" title="5">{
+func (am *AtomicState) Done() (&lt;-chan struct{}, error) <span class="cov10" title="12">{
+        if am.done == nil </span><span class="cov3" title="2">{
                 return nil, ErrStateChannelUnready // Return an error if the channel is not initialized.
         }</span>
 
-        <span class="cov9" title="25">return am.done, nil</span> // Return the `done` channel for consumers to listen for completion.
+        <span class="cov9" title="10">return am.done, nil</span> // Return the `done` channel for consumers to listen for completion.
 }
 </pre>
 		
