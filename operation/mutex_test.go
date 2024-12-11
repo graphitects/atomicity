@@ -1,10 +1,54 @@
 package operation
 
 import (
+	"reflect"
 	"sync"
 	"testing"
 	"time"
 )
+
+func TestNewAtomicMutex(t *testing.T) {
+	t.Run("success to create an instance of atomic mutex", func(t *testing.T) {
+		fn := func() {
+			// do something
+		}
+
+		am, err := NewAtomicMutex(fn)
+
+		if err != nil {
+			t.Errorf("expected no error, got %s", err.Error())
+			return
+		}
+		expectedPtrFn, ptrFn := reflect.ValueOf(fn).Pointer(), reflect.ValueOf(am.fn).Pointer()
+		if expectedPtrFn != ptrFn {
+			t.Errorf("expected fn with pointer %d, got %d", expectedPtrFn, ptrFn)
+			return
+		}
+		if am.done != nil {
+			t.Error("expected channel done to be nil, got initialized channel")
+			return
+		}
+	})
+
+	t.Run("failed to create an instance of atomic mutex - fn is nil", func(t *testing.T) {
+		fn := (func())(nil)
+
+		am, err := NewAtomicMutex(fn)
+
+		if err == nil {
+			t.Error("expected error, got nil")
+			return
+		}
+		if err != ErrNewFunctionNil {
+			t.Errorf("expected error %s, got %s", ErrNewFunctionNil.Error(), err.Error())
+			return
+		}
+		if am != nil {
+			t.Errorf("expected atomic mutex to be nil, got %v", am)
+			return
+		}
+	})
+}
 
 func TestAtomicMutex_Do(t *testing.T) {
 	t.Run("success to run operation, in concurrent ambience and signaling", func(t *testing.T) {
