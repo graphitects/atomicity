@@ -39,8 +39,8 @@ func TestNewAtomicMutex(t *testing.T) {
 			t.Error("expected error, got nil")
 			return
 		}
-		if err != ErrNewFunctionNil {
-			t.Errorf("expected error %s, got %s", ErrNewFunctionNil.Error(), err.Error())
+		if err != ErrMutexNewFunctionNil {
+			t.Errorf("expected error %s, got %s", ErrMutexNewFunctionNil.Error(), err.Error())
 			return
 		}
 		if am != nil {

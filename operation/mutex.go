@@ -7,7 +7,7 @@ import (
 
 // Predefined error messages for common failure scenarios.
 var (
-	ErrNewFunctionNil      = errors.New("function can not be nil")
+	ErrMutexNewFunctionNil = errors.New("function can not be nil") // Error returned when the function is nil
 	ErrMutexChannelUnready = errors.New("channel is not prepared") // Error returned when the done channel is uninitialized.
 )
 
@@ -32,7 +32,7 @@ type AtomicMutex struct {
 // - An error if the function is nil.
 func NewAtomicMutex(fn func()) (*AtomicMutex, error) {
 	if fn == nil {
-		return nil, ErrNewFunctionNil
+		return nil, ErrMutexNewFunctionNil
 	}
 
 	return &AtomicMutex{
