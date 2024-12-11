@@ -7,6 +7,7 @@ import (
 
 // Predefined error messages for common failure scenarios.
 var (
+	ErrNewFunctionNil      = errors.New("function can not be nil")
 	ErrMutexChannelUnready = errors.New("channel is not prepared") // Error returned when the done channel is uninitialized.
 )
 
@@ -17,6 +18,28 @@ type AtomicMutex struct {
 	fn   func()        // The function to be executed safely.
 	mu   sync.Mutex    // Mutex to prevent simultaneous calls to the Do method.
 	done chan struct{} // Channel used to signal when the operation is complete.
+}
+
+// NewAtomicMutex creates a new instance of the `AtomicMutex` struct, which
+// ensures that the function is executed atomically and provides a signaling
+// mechanism to indicate when the operation is complete.
+//
+// Parameters:
+// - fn: The function to be executed atomically.
+//
+// Returns:
+// - A new instance of the `AtomicMutex` struct.
+// - An error if the function is nil.
+func NewAtomicMutex(fn func()) (*AtomicMutex, error) {
+	if fn == nil {
+		return nil, ErrNewFunctionNil
+	}
+
+	return &AtomicMutex{
+		fn:   fn,
+		mu:   sync.Mutex{},
+		done: nil,
+	}, nil
 }
 
 // Do locks the mutex to ensure that the function is executed safely.
