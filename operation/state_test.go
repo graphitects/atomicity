@@ -1,9 +1,57 @@
 package operation
 
 import (
+	"reflect"
 	"testing"
 	"time"
 )
+
+func TestNewAtomicState(t *testing.T) {
+	t.Run("success to create an instance of atomic state", func(t *testing.T) {
+		fn := func() {
+			// do something
+		}
+
+		as, err := NewAtomicState(fn)
+
+		if err != nil {
+			t.Errorf("expected no error, got %s", err.Error())
+			return
+		}
+		expectedPtrFn, ptrFn := reflect.ValueOf(fn).Pointer(), reflect.ValueOf(as.fn).Pointer()
+		if expectedPtrFn != ptrFn {
+			t.Errorf("expected fn with pointer %d, got %d", expectedPtrFn, ptrFn)
+			return
+		}
+		if as.state != 0 {
+			t.Errorf("expected state to be initialized as 0, got %d", as.state)
+			return
+		}
+		if as.done != nil {
+			t.Error("expected channel done to be nil, got initialized channel")
+			return
+		}
+	})
+
+	t.Run("failed to create an instance of atomic state - fn is nil", func(t *testing.T) {
+		fn := (func())(nil)
+
+		as, err := NewAtomicState(fn)
+
+		if err == nil {
+			t.Error("expected error, got nil")
+			return
+		}
+		if err != ErrStateNewFunctionNil {
+			t.Errorf("expected error %s, got %s", ErrStateNewFunctionNil.Error(), err.Error())
+			return
+		}
+		if as != nil {
+			t.Errorf("expected atomic state to be nil, got %v", as)
+			return
+		}
+	})
+}
 
 func TestAtomicState_Do(t *testing.T) {
 	t.Run("success to run operation, in concurrent ambience and signaling", func(t *testing.T) {
