@@ -7,6 +7,7 @@ import (
 
 // Predefined error messages for common failure scenarios.
 var (
+	ErrStateNewFunctionNil = errors.New("function can not be nil")    // Error returned when the function is nil
 	ErrStateDoUnavailable  = errors.New("operation is not available") // Error returned when the operation is already in progress.
 	ErrStateChannelUnready = errors.New("channel is not prepared")    // Error returned when the done channel is uninitialized.
 )
@@ -23,6 +24,28 @@ type AtomicState struct {
 	fn    func()        // The function to be executed safely.
 	state uint32        // Atomic state used to control access to the operation.
 	done  chan struct{} // Channel used to signal when the operation is complete.
+}
+
+// NewAtomicState creates a new instance of the `AtomicState` struct, which
+// ensures that the function is executed atomically and provides a signaling
+// mechanism to indicate when the operation is complete.
+//
+// Parameters:
+// - fn: The function to be executed atomically.
+//
+// Returns:
+// - A new instance of the `AtomicState` struct.
+// - An error if the function is nil.
+func NewAtomicState(fn func()) (*AtomicState, error) {
+	if fn == nil {
+		return nil, ErrStateNewFunctionNil
+	}
+
+	return &AtomicState{
+		fn:    fn,
+		state: 0,
+		done:  nil,
+	}, nil
 }
 
 // Do executes the function synchronously, ensuring that only one operation
